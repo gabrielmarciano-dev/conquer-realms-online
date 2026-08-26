@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ComoJogarRouteImport } from './routes/como-jogar'
+import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as JogoGameIdRouteImport } from './routes/jogo.$gameId'
+import { Route as LobbyGameIdRouteImport } from './routes/lobby.$gameId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComoJogarRoute = ComoJogarRouteImport.update({
+  id: '/como-jogar',
+  path: '/como-jogar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RankingRoute = RankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JogoGameIdRoute = JogoGameIdRouteImport.update({
+  id: '/jogo/$gameId',
+  path: '/jogo/$gameId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LobbyGameIdRoute = LobbyGameIdRouteImport.update({
+  id: '/lobby/$gameId',
+  path: '/lobby/$gameId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
+  '/ranking': typeof RankingRoute
+  '/jogo/$gameId': typeof JogoGameIdRoute
+  '/lobby/$gameId': typeof LobbyGameIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
+  '/ranking': typeof RankingRoute
+  '/jogo/$gameId': typeof JogoGameIdRoute
+  '/lobby/$gameId': typeof LobbyGameIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
+  '/ranking': typeof RankingRoute
+  '/jogo/$gameId': typeof JogoGameIdRoute
+  '/lobby/$gameId': typeof LobbyGameIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/como-jogar'
+    | '/perfil'
+    | '/ranking'
+    | '/jogo/$gameId'
+    | '/lobby/$gameId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/como-jogar'
+    | '/perfil'
+    | '/ranking'
+    | '/jogo/$gameId'
+    | '/lobby/$gameId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/como-jogar'
+    | '/perfil'
+    | '/ranking'
+    | '/jogo/$gameId'
+    | '/lobby/$gameId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ComoJogarRoute: typeof ComoJogarRoute
+  PerfilRoute: typeof PerfilRoute
+  RankingRoute: typeof RankingRoute
+  JogoGameIdRoute: typeof JogoGameIdRoute
+  LobbyGameIdRoute: typeof LobbyGameIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/como-jogar': {
+      id: '/como-jogar'
+      path: '/como-jogar'
+      fullPath: '/como-jogar'
+      preLoaderRoute: typeof ComoJogarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ranking': {
+      id: '/ranking'
+      path: '/ranking'
+      fullPath: '/ranking'
+      preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jogo/$gameId': {
+      id: '/jogo/$gameId'
+      path: '/jogo/$gameId'
+      fullPath: '/jogo/$gameId'
+      preLoaderRoute: typeof JogoGameIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lobby/$gameId': {
+      id: '/lobby/$gameId'
+      path: '/lobby/$gameId'
+      fullPath: '/lobby/$gameId'
+      preLoaderRoute: typeof LobbyGameIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ComoJogarRoute: ComoJogarRoute,
+  PerfilRoute: PerfilRoute,
+  RankingRoute: RankingRoute,
+  JogoGameIdRoute: JogoGameIdRoute,
+  LobbyGameIdRoute: LobbyGameIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
