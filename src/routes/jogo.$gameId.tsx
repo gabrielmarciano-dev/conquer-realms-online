@@ -142,6 +142,7 @@ function GamePage() {
         });
         if (error) throw error;
         const res = data as { won: boolean; attacker_losses: number; defender_losses: number };
+        await refresh();
         setFlashId(pendingTarget.id);
         setTimeout(() => setFlashId(null), 900);
         toast[res.won ? "success" : "error"](
@@ -158,6 +159,7 @@ function GamePage() {
           p_art: art,
         });
         if (error) throw error;
+        await refresh();
         toast.success("Tropas a caminho");
       }
     } catch (e) {
@@ -176,9 +178,12 @@ function GamePage() {
       p_terr: selected.id,
       p_building: key,
     });
-    if (error) toast.error(error.message);
-    else toast.success(`${BUILDINGS[key].label} em construção`);
-    void refresh();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await refresh();
+    toast.success(`${BUILDINGS[key].label} em construção`);
   }
 
   async function recruit(unit: UnitKey, qty: number) {
@@ -188,9 +193,12 @@ function GamePage() {
       p_unit: unit,
       p_qty: qty,
     });
-    if (error) toast.error(error.message);
-    else toast.success(`${qty}x ${UNITS[unit].label} em recrutamento`);
-    void refresh();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await refresh();
+    toast.success(`${qty}x ${UNITS[unit].label} em recrutamento`);
   }
 
   if (!game || !profile) {
@@ -444,9 +452,12 @@ function GamePage() {
                   p_game: gameId,
                   p_speed: s,
                 });
-                if (error) toast.error(error.message);
-                else toast.success(`Velocidade ${s}x`);
-                void refresh();
+                if (error) {
+                  toast.error(error.message);
+                  return;
+                }
+                await refresh();
+                toast.success(`Velocidade ${s}x`);
               }}
               className={`hud-label rounded px-2 py-1 ${
                 game.speed === s ? "bg-primary text-primary-foreground" : "bg-muted/60"

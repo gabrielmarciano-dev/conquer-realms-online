@@ -102,27 +102,42 @@ export function useGame(gameId: string, userId: string | undefined) {
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
-    const [g, p, t, m, d, q] = await Promise.all([
-      supabase.from("games").select("*").eq("id", gameId).maybeSingle(),
-      supabase.from("game_players").select("*").eq("game_id", gameId).order("joined_at"),
-      supabase.from("territories").select("*").eq("game_id", gameId).order("idx"),
-      supabase.from("messages").select("*").eq("game_id", gameId).order("created_at").limit(100),
-      supabase.from("diplomacy").select("*").eq("game_id", gameId),
-      supabase.from("action_queue").select("*").eq("game_id", gameId).eq("done", false),
-    ]);
-    if (!mounted.current) return;
-    setGame((g.data as Game) ?? null);
-    setPlayers((p.data as GamePlayer[]) ?? []);
-    setTerritories((t.data as Territory[]) ?? []);
-    setMessages((m.data as ChatMessage[]) ?? []);
-    setDiplomacy((d.data as Diplomacy[]) ?? []);
-    setQueue((q.data as QueuedAction[]) ?? []);
-    setLoading(false);
+    try {
+      const [g, p, t, m, d, q] = await Promise.all([
+        supabase.from("games").select("*").eq("id", gameId).maybeSingle(),
+        supabase.from("game_players").select("*").eq("game_id", gameId).order("joined_at"),
+        supabase.from("territories").select("*").eq("game_id", gameId).order("idx"),
+        supabase.from("messages").select("*").eq("game_id", gameId).order("created_at").limit(100),
+        supabase.from("diplomacy").select("*").eq("game_id", gameId),
+        supabase.from("action_queue").select("*").eq("game_id", gameId).eq("done", false),
+      ]);
+      if (!mounted.current) return;
+      setGame((g.data as Game) ?? null);
+      setPlayers((p.data as GamePlayer[]) ?? []);
+      setTerritories((t.data as Territory[]) ?? []);
+      setMessages((m.data as ChatMessage[]) ?? []);
+      setDiplomacy((d.data as Diplomacy[]) ?? []);
+      setQueue((q.data as QueuedAction[]) ?? []);
+    } catch (error) {
+      console.error("Erro ao atualizar o estado do jogo:", error);
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
   }, [gameId]);
 
   useEffect(() => {
     mounted.current = true;
     void refresh();
+
+    const onWindowFocus = () => {
+      void refresh();
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) void refresh();
+    };
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     const channel = supabase
       .channel(`game-${gameId}`)
       .on(
@@ -155,9 +170,13 @@ export function useGame(gameId: string, userId: string | undefined) {
         { event: "*", schema: "public", table: "action_queue", filter: `game_id=eq.${gameId}` },
         () => void refresh(),
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") void refresh();
+      });
     return () => {
       mounted.current = false;
+      window.removeEventListener("focus", onWindowFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       void supabase.removeChannel(channel);
     };
   }, [gameId, refresh]);

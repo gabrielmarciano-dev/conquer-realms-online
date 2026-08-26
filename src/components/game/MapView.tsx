@@ -55,7 +55,9 @@ export function MapView({
   return (
     <svg
       viewBox="0 0 100 96"
-      className="h-full w-full select-none"
+      className="block h-full w-full select-none"
+      style={{ display: "block" }}
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Mapa estratégico da partida"
     >
