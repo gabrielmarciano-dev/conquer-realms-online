@@ -51,20 +51,25 @@ export async function ensureProfile(userId: string, fallbackName: string) {
 export function useProfile() {
   const { session, loading } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
+    if (loading) return;
     if (!session?.user) {
       setProfile(null);
+      setProfileLoading(false);
       return;
     }
+    setProfileLoading(true);
     const name =
       (session.user.user_metadata['username'] as string | undefined) ??
       session.user.email?.split("@")[0] ??
       `Comandante-${session.user.id.slice(0, 4)}`;
     ensureProfile(session.user.id, name)
       .then(setProfile)
-      .catch(() => setProfile(null));
-  }, [session?.user?.id]);
+      .catch(() => setProfile(null))
+      .finally(() => setProfileLoading(false));
+  }, [loading, session?.user?.id]);
 
-  return { session, profile, loading, setProfile };
+  return { session, profile, loading: loading || profileLoading, setProfile };
 }
