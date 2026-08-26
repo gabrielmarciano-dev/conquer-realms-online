@@ -3,9 +3,22 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/session";
-import { useGame, type Diplomacy, type GamePlayer, type Territory } from "@/lib/use-game";
+import {
+  useGame,
+  type Diplomacy,
+  type GamePlayer,
+  type QueuedAction,
+  type Territory,
+} from "@/lib/use-game";
 import { leaveGame } from "@/lib/actions";
-import { BUILDINGS, TERRAIN, UNITS, formatClock, type BuildingKey, type UnitKey } from "@/lib/game-data";
+import {
+  BUILDINGS,
+  TERRAIN,
+  UNITS,
+  formatClock,
+  type BuildingKey,
+  type UnitKey,
+} from "@/lib/game-data";
 import { MapView } from "@/components/game/MapView";
 import { Chat } from "@/components/game/Chat";
 import { Button } from "@/components/ui/button";
@@ -45,7 +58,10 @@ function GamePage() {
   const { gameId } = Route.useParams();
   const { profile, loading } = useProfile();
   const navigate = useNavigate();
-  const { game, players, territories, messages, diplomacy, me } = useGame(gameId, profile?.id);
+  const { game, players, territories, messages, diplomacy, queue, me } = useGame(
+    gameId,
+    profile?.id,
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("idle");
@@ -77,13 +93,36 @@ function GamePage() {
   const myTerritories = territories.filter((t) => me && t.owner_player_id === me.id);
   const myTroops = myTerritories.reduce((a, t) => a + t.infantry + t.tanks + t.artillery, 0);
 
+  const selectedQueue = useMemo(
+    () => (selected ? queue.filter((q) => q.territory_id === selected.id) : []),
+    [selected, queue],
+  );
+  const pendingBuildKeys = new Set(
+    selectedQueue.filter((q) => q.kind === "build").map((q) => q.payload.building),
+  );
+  const pendingRecruits = selectedQueue.filter((q) => q.kind === "recruit");
+  const incomingMoves = selectedQueue.filter((q) => q.kind === "move");
+
   function onSelect(t: Territory) {
-    if (mode !== "idle" && selected && neighborTargets.some((n) => n.id === t.id)) {
-      setPendingTarget(t);
-      setInf(0);
-      setTank(0);
-      setArt(0);
-      setDialog("troops");
+    if (mode !== "idle" && selected) {
+      if (neighborTargets.some((n) => n.id === t.id)) {
+        setPendingTarget(t);
+        setInf(0);
+        setTank(0);
+        setArt(0);
+        setDialog("troops");
+        return;
+      }
+      if (t.id !== selected.id) {
+        toast.error(
+          mode === "attack"
+            ? "Alvo inválido: escolha um território vizinho inimigo."
+            : "Alvo inválido: escolha um território vizinho aliado.",
+        );
+        return;
+      }
+      // clicking the already-selected territory again cancels the mode
+      setMode("idle");
       return;
     }
     setSelectedId(t.id);
@@ -119,7 +158,7 @@ function GamePage() {
           p_art: art,
         });
         if (error) throw error;
-        toast.success("Tropas deslocadas");
+        toast.success("Tropas a caminho");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ação inválida");
@@ -137,7 +176,7 @@ function GamePage() {
       p_building: key,
     });
     if (error) toast.error(error.message);
-    else toast.success(`${BUILDINGS[key].label} construído`);
+    else toast.success(`${BUILDINGS[key].label} em construção`);
   }
 
   async function recruit(unit: UnitKey, qty: number) {
@@ -148,7 +187,7 @@ function GamePage() {
       p_qty: qty,
     });
     if (error) toast.error(error.message);
-    else toast.success(`${qty}x ${UNITS[unit].label} recrutado`);
+    else toast.success(`${qty}x ${UNITS[unit].label} em recrutamento`);
   }
 
   if (!game || !profile) {
@@ -233,6 +272,37 @@ function GamePage() {
                         .join(", ")}
                 </p>
               </div>
+              {selectedQueue.length > 0 && (
+                <div>
+                  <p className="hud-label">Em andamento</p>
+                  <div className="mt-1 space-y-1">
+                    {pendingBuildKeys.size > 0 &&
+                      selectedQueue
+                        .filter((q) => q.kind === "build")
+                        .map((q) => (
+                          <QueueRow
+                            key={q.id}
+                            label={`Construindo ${BUILDINGS[q.payload.building as BuildingKey]?.label ?? q.payload.building}`}
+                            completeAt={q.complete_at}
+                          />
+                        ))}
+                    {pendingRecruits.map((q) => (
+                      <QueueRow
+                        key={q.id}
+                        label={`Recrutando ${q.payload.qty}x ${UNITS[q.payload.unit as UnitKey]?.label ?? q.payload.unit}`}
+                        completeAt={q.complete_at}
+                      />
+                    ))}
+                    {incomingMoves.map((q) => (
+                      <QueueRow
+                        key={q.id}
+                        label={`Tropas chegando: ${q.payload.inf ?? 0}inf ${q.payload.tank ?? 0}tq ${q.payload.art ?? 0}art`}
+                        completeAt={q.complete_at}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               {mine && (
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -275,9 +345,7 @@ function GamePage() {
             selectedId={selectedId}
             targetIds={neighborTargets.map((t) => t.id)}
             onSelect={onSelect}
-            pendingArrow={
-              selected && pendingTarget ? { from: selected, to: pendingTarget } : null
-            }
+            pendingArrow={selected && pendingTarget ? { from: selected, to: pendingTarget } : null}
             flashId={flashId}
           />
         </section>
@@ -336,12 +404,7 @@ function GamePage() {
       {/* BOTTOM BAR */}
       <footer className="flex items-center justify-between gap-3 border-t border-border bg-card/80 px-5 py-2">
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!mine}
-            onClick={() => setDialog("build")}
-          >
+          <Button size="sm" variant="secondary" disabled={!mine} onClick={() => setDialog("build")}>
             Construir
           </Button>
           <Button
@@ -352,20 +415,10 @@ function GamePage() {
           >
             Recrutar
           </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!mine}
-            onClick={() => setMode("move")}
-          >
+          <Button size="sm" variant="secondary" disabled={!mine} onClick={() => setMode("move")}>
             Mover
           </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!mine}
-            onClick={() => setMode("attack")}
-          >
+          <Button size="sm" variant="secondary" disabled={!mine} onClick={() => setMode("attack")}>
             Atacar
           </Button>
           <Button size="sm" variant="secondary" onClick={() => setDialog("diplomacy")}>
@@ -374,14 +427,25 @@ function GamePage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="hud-label">Velocidade</span>
-          {[1, 2, 4].map((s) => (
+          {[1, 2, 4, 8].map((s) => (
             <button
               key={s}
               disabled={game.host_id !== profile.id}
-              onClick={() => supabase.from("games").update({ speed: s }).eq("id", gameId)}
+              title={
+                game.host_id !== profile.id
+                  ? "Somente o anfitrião pode mudar a velocidade"
+                  : undefined
+              }
+              onClick={async () => {
+                const { error } = await supabase.rpc("rpc_set_speed", {
+                  p_game: gameId,
+                  p_speed: s,
+                });
+                if (error) toast.error(error.message);
+              }}
               className={`hud-label rounded px-2 py-1 ${
                 game.speed === s ? "bg-primary text-primary-foreground" : "bg-muted/60"
-              }`}
+              } ${game.host_id !== profile.id ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
             >
               {s}x
             </button>
@@ -479,8 +543,15 @@ function GamePage() {
                     {BUILDINGS[k].desc} · {BUILDINGS[k].money}💰 {BUILDINGS[k].metal}⛭
                   </p>
                 </div>
-                <Button size="sm" onClick={() => build(k)}>
-                  Construir
+                <Button
+                  size="sm"
+                  disabled={
+                    pendingBuildKeys.has(k) ||
+                    Boolean(selected && k !== "wall" && k in selected.buildings)
+                  }
+                  onClick={() => build(k)}
+                >
+                  {pendingBuildKeys.has(k) ? "Em construção…" : "Construir"}
                 </Button>
               </div>
             ))}
@@ -506,12 +577,7 @@ function GamePage() {
           <DialogHeader>
             <DialogTitle className="font-display">Diplomacia</DialogTitle>
           </DialogHeader>
-          <DiplomacyPanel
-            gameId={gameId}
-            me={me}
-            players={players}
-            diplomacy={diplomacy}
-          />
+          <DiplomacyPanel gameId={gameId} me={me} players={players} diplomacy={diplomacy} />
         </DialogContent>
       </Dialog>
     </main>
@@ -537,6 +603,21 @@ function Res({
   );
 }
 
+function QueueRow({ label, completeAt }: { label: string; completeAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const remaining = Math.max(0, Math.ceil((new Date(completeAt).getTime() - now) / 1000));
+  return (
+    <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-display">{remaining}s</span>
+    </div>
+  );
+}
+
 function TroopInput({
   label,
   value,
@@ -557,9 +638,7 @@ function TroopInput({
           min={0}
           max={max}
           value={value}
-          onChange={(e) =>
-            onChange(Math.max(0, Math.min(max, Number(e.target.value) || 0)))
-          }
+          onChange={(e) => onChange(Math.max(0, Math.min(max, Number(e.target.value) || 0)))}
         />
         <Button type="button" variant="secondary" size="sm" onClick={() => onChange(max)}>
           Máx
@@ -611,8 +690,7 @@ function DiplomacyPanel({
   if (!me) return <p className="text-sm text-muted-foreground">Você é apenas espectador.</p>;
 
   const statusWith = (other: GamePlayer) =>
-    diplomacy.find((d) => d.from_player === me.id && d.to_player === other.id)?.status ??
-    "neutral";
+    diplomacy.find((d) => d.from_player === me.id && d.to_player === other.id)?.status ?? "neutral";
 
   const LABEL: Record<string, string> = {
     neutral: "Neutro",

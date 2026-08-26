@@ -72,22 +72,43 @@ export type Diplomacy = {
   status: "neutral" | "war" | "alliance" | "peace_offer" | "alliance_offer";
 };
 
+export type QueuedAction = {
+  id: string;
+  game_id: string;
+  player_id: string;
+  kind: "build" | "recruit" | "move";
+  territory_id: string;
+  from_territory_id: string | null;
+  payload: {
+    building?: string;
+    unit?: string;
+    qty?: number;
+    inf?: number;
+    tank?: number;
+    art?: number;
+  };
+  complete_at: string;
+  done: boolean;
+};
+
 export function useGame(gameId: string, userId: string | undefined) {
   const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [diplomacy, setDiplomacy] = useState<Diplomacy[]>([]);
+  const [queue, setQueue] = useState<QueuedAction[]>([]);
   const [loading, setLoading] = useState(true);
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
-    const [g, p, t, m, d] = await Promise.all([
+    const [g, p, t, m, d, q] = await Promise.all([
       supabase.from("games").select("*").eq("id", gameId).maybeSingle(),
       supabase.from("game_players").select("*").eq("game_id", gameId).order("joined_at"),
       supabase.from("territories").select("*").eq("game_id", gameId).order("idx"),
       supabase.from("messages").select("*").eq("game_id", gameId).order("created_at").limit(100),
       supabase.from("diplomacy").select("*").eq("game_id", gameId),
+      supabase.from("action_queue").select("*").eq("game_id", gameId).eq("done", false),
     ]);
     if (!mounted.current) return;
     setGame((g.data as Game) ?? null);
@@ -95,6 +116,7 @@ export function useGame(gameId: string, userId: string | undefined) {
     setTerritories((t.data as Territory[]) ?? []);
     setMessages((m.data as ChatMessage[]) ?? []);
     setDiplomacy((d.data as Diplomacy[]) ?? []);
+    setQueue((q.data as QueuedAction[]) ?? []);
     setLoading(false);
   }, [gameId]);
 
@@ -128,6 +150,11 @@ export function useGame(gameId: string, userId: string | undefined) {
         { event: "*", schema: "public", table: "diplomacy", filter: `game_id=eq.${gameId}` },
         () => void refresh(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "action_queue", filter: `game_id=eq.${gameId}` },
+        () => void refresh(),
+      )
       .subscribe();
     return () => {
       mounted.current = false;
@@ -135,17 +162,21 @@ export function useGame(gameId: string, userId: string | undefined) {
     };
   }, [gameId, refresh]);
 
-  // Economy tick driver — resources are produced server-side.
+  // Single source of truth for game time: the server-side game tick.
+  // It resolves the action queue (build/recruit/move) and produces
+  // resources, all scaled by games.speed — never the browser's clock.
+  // Polled at a fixed 3s cadence regardless of speed: the *duration* of
+  // in-game actions is what speed changes, not how often we poll for them.
   useEffect(() => {
     if (game?.status !== "active") return;
     const id = setInterval(() => {
       void supabase.rpc("rpc_tick", { p_game: gameId });
-    }, 10000);
+    }, 3000);
     void supabase.rpc("rpc_tick", { p_game: gameId });
     return () => clearInterval(id);
   }, [gameId, game?.status]);
 
   const me = players.find((p) => p.user_id === userId) ?? null;
 
-  return { game, players, territories, messages, diplomacy, me, loading, refresh };
+  return { game, players, territories, messages, diplomacy, queue, me, loading, refresh };
 }
