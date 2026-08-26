@@ -58,7 +58,7 @@ function GamePage() {
   const { gameId } = Route.useParams();
   const { profile, loading } = useProfile();
   const navigate = useNavigate();
-  const { game, players, territories, messages, diplomacy, queue, me } = useGame(
+  const { game, players, territories, messages, diplomacy, queue, me, refresh } = useGame(
     gameId,
     profile?.id,
   );
@@ -163,6 +163,7 @@ function GamePage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ação inválida");
     } finally {
+      void refresh();
       setDialog(null);
       setPendingTarget(null);
       setMode("idle");
@@ -177,6 +178,7 @@ function GamePage() {
     });
     if (error) toast.error(error.message);
     else toast.success(`${BUILDINGS[key].label} em construção`);
+    void refresh();
   }
 
   async function recruit(unit: UnitKey, qty: number) {
@@ -188,6 +190,7 @@ function GamePage() {
     });
     if (error) toast.error(error.message);
     else toast.success(`${qty}x ${UNITS[unit].label} em recrutamento`);
+    void refresh();
   }
 
   if (!game || !profile) {
@@ -442,6 +445,8 @@ function GamePage() {
                   p_speed: s,
                 });
                 if (error) toast.error(error.message);
+                else toast.success(`Velocidade ${s}x`);
+                void refresh();
               }}
               className={`hud-label rounded px-2 py-1 ${
                 game.speed === s ? "bg-primary text-primary-foreground" : "bg-muted/60"
@@ -577,7 +582,13 @@ function GamePage() {
           <DialogHeader>
             <DialogTitle className="font-display">Diplomacia</DialogTitle>
           </DialogHeader>
-          <DiplomacyPanel gameId={gameId} me={me} players={players} diplomacy={diplomacy} />
+          <DiplomacyPanel
+            gameId={gameId}
+            me={me}
+            players={players}
+            diplomacy={diplomacy}
+            refresh={refresh}
+          />
         </DialogContent>
       </Dialog>
     </main>
@@ -681,11 +692,13 @@ function DiplomacyPanel({
   me,
   players,
   diplomacy,
+  refresh,
 }: {
   gameId: string;
   me: GamePlayer | null;
   players: GamePlayer[];
   diplomacy: Diplomacy[];
+  refresh: () => void;
 }) {
   if (!me) return <p className="text-sm text-muted-foreground">Você é apenas espectador.</p>;
 
@@ -708,6 +721,7 @@ function DiplomacyPanel({
     });
     if (error) toast.error(error.message);
     else toast.success("Status diplomático atualizado");
+    void refresh();
   }
 
   return (
