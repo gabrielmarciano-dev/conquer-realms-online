@@ -170,11 +170,11 @@ export function useGame(gameId: string, userId: string | undefined) {
   useEffect(() => {
     if (game?.status !== "active") return;
     const id = setInterval(() => {
-      void supabase.rpc("rpc_tick", { p_game: gameId });
+      void supabase.rpc("rpc_tick", { p_game: gameId }).then(() => void refresh());
     }, 3000);
-    void supabase.rpc("rpc_tick", { p_game: gameId });
+    void supabase.rpc("rpc_tick", { p_game: gameId }).then(() => void refresh());
     return () => clearInterval(id);
-  }, [gameId, game?.status]);
+  }, [gameId, game?.status, refresh]);
 
   const me = players.find((p) => p.user_id === userId) ?? null;
 
