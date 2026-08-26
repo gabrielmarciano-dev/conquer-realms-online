@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ComoJogarRouteImport } from './routes/como-jogar'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as RankingRouteImport } from './routes/ranking'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const ComoJogarRoute = ComoJogarRouteImport.update({
   path: '/como-jogar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
   '/ranking': typeof RankingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
   '/ranking': typeof RankingRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/como-jogar': typeof ComoJogarRoute
+  '/perfil': typeof PerfilRoute
   '/ranking': typeof RankingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/como-jogar' | '/ranking'
+  fullPaths: '/' | '/auth' | '/como-jogar' | '/perfil' | '/ranking'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/como-jogar' | '/ranking'
-  id: '__root__' | '/' | '/auth' | '/como-jogar' | '/ranking'
+  to: '/' | '/auth' | '/como-jogar' | '/perfil' | '/ranking'
+  id: '__root__' | '/' | '/auth' | '/como-jogar' | '/perfil' | '/ranking'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ComoJogarRoute: typeof ComoJogarRoute
+  PerfilRoute: typeof PerfilRoute
   RankingRoute: typeof RankingRoute
 }
 
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComoJogarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ranking': {
       id: '/ranking'
       path: '/ranking'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ComoJogarRoute: ComoJogarRoute,
+  PerfilRoute: PerfilRoute,
   RankingRoute: RankingRoute,
 }
 export const routeTree = rootRouteImport

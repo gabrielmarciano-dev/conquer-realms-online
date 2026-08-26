@@ -56,7 +56,10 @@ function ProfilePage() {
       .eq("id", profile!.id)
       .select("*")
       .single();
-    if (error) return toast.error("Não foi possível salvar");
+    if (error) {
+      toast.error("Não foi possível salvar");
+      return;
+    }
     setProfile(data as typeof profile);
     toast.success("Perfil atualizado");
   }
