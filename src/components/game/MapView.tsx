@@ -31,7 +31,7 @@ export function MapView({
 }: Props) {
   const colorOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.color]));
-    return (id: string | null) => (id ? (map.get(id) ?? "#6b7280") : "#525c६b".replace("६", "6"));
+    return (id: string | null) => (id ? (map.get(id) ?? "#6b7280") : "#59636f");
   }, [players]);
 
   const byIdx = useMemo(() => new Map(territories.map((t) => [t.idx, t])), [territories]);
